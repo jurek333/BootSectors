@@ -5,16 +5,19 @@
     LINE        EQU 80*2
     LEFT        EQU 2
     RIGHT       EQU 1
-    GRASS       EQU 0x02ce
+    GRASS       EQU 0x82b0 ; old ce
     ROAD        EQU 0x0f00
-    SCREEN_AREA EQU 0x0f00
+    SCREEN_AREA EQU 80*25*2
 
-    LEFT_WHEEL  EQU 199
-    RIGHT_WHEEL EQU 182
-    CAR_BODY    EQU 219
-    FRONT_AXIS  EQU 202
-    REAR_AXIS   EQU 210
-    CAR_COLOR   EQU 0x0e
+    BONUS       EQU 0x0e24
+    BOMB        EQU 0x06ce ; old e9
+
+    LEFT_WHEEL  EQU 0x0fc7
+    RIGHT_WHEEL EQU 0x0fb6 ;182
+    CAR_BODY    EQU 0xe9df ;219
+    FRONT_AXIS  EQU 0x0eca ;202
+    REAR_AXIS   EQU 0x0ed2 ;210
+    ;CAR_COLOR   EQU 0x0e
 
 start:
     xor ax, ax
@@ -35,20 +38,35 @@ start:
     mov ah, 0x00
     int 0x1a
     mov [oldtime], dx
+    mov [seed], dx
     ;; clear screen
     mov ax, SCREEN_AREA
     xor di, di
     mov cx, ax
     rep stosw
 
-main:
     call road
+    xor ax, ax
+    push ax
+main:
+    pop ax
+    inc ax
+    cmp ax, 2
+    jb .continue
+    call move
+    call rand_bomb
+    call rand_bonus
+    xor ax, ax
+    .continue:
+    push ax
 
     ;; check if car not crashed
     mov di, [position]
     es mov ax, [di]
-    test al, al
-    jnz crash
+    cmp ax, BOMB
+    je crash
+    cmp ax, GRASS
+    je crash
 
     ;; draw car at ax
     mov ax, [position]
@@ -56,9 +74,12 @@ main:
 
     call time
 
+    mov ax, [position]
+    call clear_car
+
     mov ah, 0x02
     int 0x16
-    
+
     test al, LEFT               ;left
     jz .skip_left
     mov bx, [position]
@@ -99,6 +120,22 @@ time:
     mov [oldtime],dx
     ret
 
+move:
+    push ds
+    push es
+    pop ds
+    std
+    mov si, 80*2*24-2
+    mov di, 80*2*25-2
+    mov cx, 80*24
+    rep movsw
+    mov ax, ROAD
+    mov di, 70*2
+    mov cx, 61
+    rep stosw
+    pop ds
+    cld
+    ret
 road:
     xor di, di
     mov cx, SCREEN_AREA
@@ -126,27 +163,83 @@ road:
 
 car:
     mov di, ax
-    mov ah, CAR_COLOR
-    mov al, CAR_BODY                 ;center
+    mov ax, CAR_BODY                 ;center
     es mov [di], ax
-    mov al, REAR_AXIS
+    
+    mov ax, REAR_AXIS
     es mov [di-LINE], ax
-    mov al, FRONT_AXIS
+    mov ax, FRONT_AXIS
     es mov [di+LINE], ax
 
-    mov al, LEFT_WHEEL
+    mov ax, LEFT_WHEEL
     es mov [di-LINE-2], ax
-    mov al, RIGHT_WHEEL
+    mov ax, RIGHT_WHEEL
     es mov [di-LINE+2], ax
 
-    mov al, LEFT_WHEEL
+    mov ax, LEFT_WHEEL
     es mov [di+LINE-2], ax
-    mov al, RIGHT_WHEEL
+    mov ax, RIGHT_WHEEL
     es mov [di+LINE+2], ax
     ret
 
+clear_car:
+    mov di, ax
+    mov ax, ROAD
+    es mov [di], ax
+    es mov [di-LINE], ax
+    es mov [di+LINE], ax
+    es mov [di-LINE-2], ax
+    es mov [di-LINE+2], ax
+    es mov [di+LINE-2], ax
+    es mov [di+LINE+2], ax
+    ret
+
+rand_bonus:
+    call rand
+    cmp ax, 0x000f
+    jb .place_bonus
+    ret
+    .place_bonus:
+    call get_position
+    add ax, 20
+    mov di, ax
+    es mov [di], word BONUS
+    ret
+
+rand_bomb:
+    call rand
+    cmp ax, 0xa000
+    ja .place_bomb
+    ret
+    .place_bomb:
+    call get_position
+    add ax, 20
+    mov di, ax
+    es mov [di], word BOMB
+    ret
+
+get_position:
+    xor dx, dx
+    mov bx, 60*2
+    div bx
+    inc dx
+    and dx, 0xfffe
+    mov ax, dx
+    ret
+rand:
+    push dx
+    mov ax, 25173       ; LCG Multiplier
+    mul word [seed]     ; DX:AX = LCG multiplier * seed
+    add ax, 13849       ; Add LCG increment value
+    mov [seed], ax      ; Update seed
+    ; AX = (multiplier * seed + increment) mod 65536
+    pop dx
+    ret
+
+
     position    dw 22*LINE+LINE/2
     oldtime     dw 0
+    seed        dw 0
     pavement_l  dw 10*2
     pavement_r  dw LINE-10*2
 
