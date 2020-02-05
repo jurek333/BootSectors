@@ -62,11 +62,16 @@ main:
 
     ;; check if car not crashed
     mov di, [position]
-    es mov ax, [di]
-    cmp ax, BOMB
-    je crash
-    cmp ax, GRASS
-    je crash
+    mov al, 0x0e
+    es and al, [di+1]
+    es and al, [di+1-LINE]
+    es and al, [di+1-LINE-2]
+    es and al, [di+1-LINE+2]
+    es and al, [di+1+LINE]
+    es and al, [di+1+LINE+2]
+    es and al, [di+1+LINE-2]
+    cmp al, 0x0e
+    jne crash
 
     ;; draw car at ax
     mov ax, [position]
@@ -196,7 +201,7 @@ clear_car:
 
 rand_bonus:
     call rand
-    cmp ax, 0x000f
+    cmp ax, 0x0fff
     jb .place_bonus
     ret
     .place_bonus:
