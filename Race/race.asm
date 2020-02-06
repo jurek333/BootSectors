@@ -186,21 +186,22 @@ main:
     es mov [di+LINE-2], ax
     es mov [di+LINE+2], ax
 
-    mov ah, 0x01
+    ;mov ah, 0x01
+    ;int 0x16
+    ;je main
+    ;mov di, 0x041a
+    ;ds mov dword [di], 0x041e041e    
+    mov ah, 0x02
     int 0x16
-    je main
 
-    mov di, 0x041a
-    ds mov dword [di], 0x041e041e
-
-    cmp ah, 0x4b               ;left
+    cmp al, LEFT               ;left
     jne .skip_left
     mov bx, [position]
     sub bx, 2
     mov [position], bx
     jmp main
     .skip_left:
-    cmp ah, 0x4d               ;right
+    cmp al, RIGHT               ; right
     jne main
     mov bx, [position]
     add bx, 2
