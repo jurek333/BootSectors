@@ -189,10 +189,10 @@ main:
     ;mov ah, 0x01
     ;int 0x16
     ;je main
-    ;mov di, 0x041a
-    ;ds mov dword [di], 0x041e041e    
     mov ah, 0x02
     int 0x16
+    mov di, 0x041a
+    ds mov dword [di], 0x041e041e
 
     cmp al, LEFT               ;left
     jne .skip_left
